@@ -43,7 +43,7 @@ def format_date(df,column):
 
 def remove_carriage_returns(df, column):
     """Removes carraige returns"""
-    df[column] = df[column].str.replace('\r', '')
+    df[column] = df[column].str.replace('\n\r', '')
     return df
 
 def get_clockify_file_name(search_in):
@@ -77,7 +77,6 @@ def main():
     data_frame.columns = adjusted_names  # rename them
     data_frame.is_copy = False
     data_frame["Hours"] = data_frame["Hours"].astype(float)
-    #data_frame["Milestone"] = None
 
     data_frame["Rate"] = data_frame.apply(lambda row: cfg.get(
         "RATE CARD", row.User, fallback=0), axis=1)
@@ -87,7 +86,9 @@ def main():
 
     data_frame["Cost"] = data_frame['Rate'] * data_frame['Hours']
     data_frame["Week Number"] = data_frame["Date"].apply(week_number)
+    
     data_frame["Invoice-Period"] = data_frame["Date"].apply(invoice_period)
+    data_frame["Milestone"] = "Not set"
 
     data_frame = remove_carriage_returns(data_frame,"Description")
     data_frame = remove_carriage_returns(data_frame,"Project")

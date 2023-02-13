@@ -27,7 +27,7 @@ rate_card = config['RATE CARD']
 rate_card['Alex Luketa']=	'81.25'
 rate_card['Connor Holloway']=	'62.5'
 rate_card['Derek Leung']=	'62.5'
-rate_card['Jason Braid']=	'81.25'
+rate_card['Jason Braid']=	'62.5'
 rate_card['Jon Willaims']=	'81.25'
 rate_card['Matt Gough']=	'62.5'
 
