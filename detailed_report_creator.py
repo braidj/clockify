@@ -44,6 +44,7 @@ def format_date(df,column):
 def remove_carriage_returns(df, column):
     """Removes carraige returns"""
     df[column] = df[column].str.replace('\n\r', '')
+    df[column] = df[column].str.replace('\n', '')
     return df
 
 def get_clockify_file_name(search_in):
