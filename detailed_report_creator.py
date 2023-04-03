@@ -3,6 +3,7 @@ Utility to format clockify report easily
 Usage: download clockify report as xlsx, run script,
 paste contents from clipboard
 """
+
 import os
 from datetime import datetime
 import sys
@@ -10,6 +11,7 @@ import configparser
 import glob
 import pandas as pd
 import pyperclip
+import warnings
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -22,7 +24,26 @@ pd.set_option('display.precision', 3)
 #TODO Add Month-Year
 
 cfg = configparser.ConfigParser()
-cfg.read('config.ini')
+cfg.read('clockify.ini')
+
+class RateCard:
+    """
+    Store the higher rate users hourly rates
+    """
+    def __init__(self,higher_rate_users,higher_rate,base_rate) -> None:
+        self.directors = higher_rate_users
+        self.director_rate = higher_rate
+        self.base_rate = base_rate
+
+    def rate(self,user):
+        """
+        Returns the appropriate rate for that user
+        """
+
+        if user in self.directors:
+            return self.director_rate
+
+        return self.base_rate
 
 def invoice_period(date_string):
     """To help with invoicing display the date as mm-yyyy"""
@@ -43,8 +64,7 @@ def format_date(df,column):
 
 def remove_carriage_returns(df, column):
     """Removes carraige returns"""
-    df[column] = df[column].str.replace('\n\r', '')
-    df[column] = df[column].str.replace('\n', '')
+    df[column] = df[column].str.replace('\n', '.')
     return df
 
 def get_clockify_file_name(search_in):
@@ -59,19 +79,49 @@ def get_clockify_file_name(search_in):
         print("There is no recent Clockify report")
         sys.exit(0)
 
+def calc_rate(template, rate):
+    """
+    Returns the rate to 2 dec places
+    """
+
+    rate = float(cfg[template]["base rate"]) / float(cfg[template]["hours per day"])
+    return round(rate,2)
+
+def get_higher_rate_user(template):
+    """
+    Returns a list of user who are charged at the higher rate
+    """
+    result = cfg[template]['higher users']
+    return result.split(',')
+
 def main():
     """Main entry point"""
+
+    CLIENT = "500_BY_7"
+    HOUR_BASE_RATE = calc_rate(CLIENT,"base rate")
+    HOUR_DIRECTOR_RATE = calc_rate(CLIENT,"higher rate")
+    HIGHER_RATE_USERS = get_higher_rate_user(CLIENT)
+
+    rate_card = RateCard(HIGHER_RATE_USERS,HOUR_DIRECTOR_RATE,HOUR_BASE_RATE)
+
+    print(f"Base hourly rate = £{HOUR_BASE_RATE}")
+    print(f"Higher hourly rate = £{HOUR_DIRECTOR_RATE}")
+    print(f"Higher rate users = {HIGHER_RATE_USERS}")
+    print(f"Reporting template used = {CLIENT}")
+
     user_dir = os.path.expanduser('~')
-    download_dir = os.path.join(user_dir, 'Downloads')
-    data_sheet = cfg['DATA']['data_sheet']
+    download_dir = os.path.join(user_dir, 'Downloads') # search in used specific downloads folder
+    data_sheet = cfg['GLOBAL SETTINGS']['data_sheet']
 
     required_columns = list(cfg['CLOCKIFY COLUMNS'].keys())
     adjusted_names = list(cfg['CLOCKIFY COLUMNS'].values())
 
     report_xlsx = get_clockify_file_name(download_dir)
 
-    data_frame = pd.read_excel(report_xlsx,
-                       sheet_name=data_sheet, dtype=str)
+
+    with warnings.catch_warnings(record=True): # hide a useless warning fromm pd
+        warnings.simplefilter("always")
+        data_frame  = pd.read_excel(report_xlsx, sheet_name=data_sheet, dtype=str,engine="openpyxl")
 
     data_frame.rename(columns=str.lower, inplace=True)
     data_frame = data_frame[required_columns]  # just these columns
@@ -79,15 +129,14 @@ def main():
     data_frame.is_copy = False
     data_frame["Hours"] = data_frame["Hours"].astype(float)
 
-    data_frame["Rate"] = data_frame.apply(lambda row: cfg.get(
-        "RATE CARD", row.User, fallback=0), axis=1)
+    data_frame["Rate"] = data_frame.apply(lambda row: rate_card.rate(row.User), axis=1)
 
     data_frame["Rate"] = data_frame["Rate"].astype(float)
     data_frame=format_date(data_frame,"Date")
 
     data_frame["Cost"] = data_frame['Rate'] * data_frame['Hours']
     data_frame["Week Number"] = data_frame["Date"].apply(week_number)
-    
+
     data_frame["Invoice-Period"] = data_frame["Date"].apply(invoice_period)
     data_frame["Milestone"] = "Not set"
 
@@ -104,7 +153,7 @@ def main():
 
     pyperclip.copy(text)
 
-    if cfg['DATA']['debug'] == 'on':
+    if cfg['GLOBAL SETTINGS']['debug'] == 'on':
         print("\nThe following data is available to be pasted from the clipboard\n")
         print(sort)
 
