@@ -97,7 +97,7 @@ def get_higher_rate_user(template):
 def main():
     """Main entry point"""
 
-    CLIENT = "500_BY_7"
+    CLIENT = "MTC"
     HOUR_BASE_RATE = calc_rate(CLIENT,"base rate")
     HOUR_DIRECTOR_RATE = calc_rate(CLIENT,"higher rate")
     HIGHER_RATE_USERS = get_higher_rate_user(CLIENT)
@@ -143,8 +143,9 @@ def main():
     data_frame = remove_carriage_returns(data_frame,"Description")
     data_frame = remove_carriage_returns(data_frame,"Project")
 
-    sort = data_frame.sort_values("Week Number", axis=0, ascending=False,
-    inplace=False, kind='quicksort', na_position='last')
+    # sort = data_frame.sort_values("Week Number", axis=0, ascending=False,
+    # inplace=False, kind='quicksort', na_position='last')
+    sort = data_frame.sort_values(["Invoice-Period","Week Number","Date","User"],ascending=True)
 
     sort.to_csv("results.csv", index=False)
 
