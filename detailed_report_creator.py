@@ -19,11 +19,19 @@ pd.set_option('display.width', 1000)
 pd.set_option('display.colheader_justify', 'center')
 pd.set_option('display.precision', 3)
 
+CLOCKIFY_COLUMNS = [
+    'Project', 'Client', 'Description', 'Task',
+    'User', 'Group', 'Email', 'Tags', 'Billable',
+    'Start Date', 'Start Time', 'End Date', 'End Time',
+    'Duration (h)', 'Duration (decimal)', 
+    'Billable Rate (GBP)', 'Billable Amount (GBP)']
+
 #TODO Summarise by distinct Project
 #TODO Summarise by distinct Project and Week Nos
 #TODO Add Month-Year
 
 cfg = configparser.ConfigParser()
+
 cfg.read('clockify.ini')
 
 class RateCard:
@@ -70,7 +78,7 @@ def remove_carriage_returns(df, column):
 def get_clockify_file_name(search_in):
     """Returns the name of the last file in search folder that starts with Clockify_"""
 
-    file_type = r'/Clockify_*.xlsx'
+    file_type = r'/Clockify_*.csv'
     files = glob.glob(search_in +  file_type)
     try:
         max_file = max(files, key=os.path.getctime)
@@ -96,16 +104,17 @@ def get_higher_rate_user(template):
 
 def main():
     """Main entry point"""
-
-    CLIENT = "MTC"
+    #TODO handle if no recent csv file
+    #TDOO Refactor so main just contains which client to run for
+    CLIENT = "SIGNIFY"
     HOUR_BASE_RATE = calc_rate(CLIENT,"base rate")
     HOUR_DIRECTOR_RATE = calc_rate(CLIENT,"higher rate")
     HIGHER_RATE_USERS = get_higher_rate_user(CLIENT)
 
     rate_card = RateCard(HIGHER_RATE_USERS,HOUR_DIRECTOR_RATE,HOUR_BASE_RATE)
 
-    print(f"Base hourly rate = £{HOUR_BASE_RATE}")
-    print(f"Higher hourly rate = £{HOUR_DIRECTOR_RATE}")
+    print(f"Base hourly rate = {HOUR_BASE_RATE}")
+    print(f"Higher hourly rate = {HOUR_DIRECTOR_RATE}")
     print(f"Higher rate users = {HIGHER_RATE_USERS}")
     print(f"Reporting template used = {CLIENT}")
 
@@ -116,14 +125,14 @@ def main():
     required_columns = list(cfg['CLOCKIFY COLUMNS'].keys())
     adjusted_names = list(cfg['CLOCKIFY COLUMNS'].values())
 
-    report_xlsx = get_clockify_file_name(download_dir)
-
+    report_csv = get_clockify_file_name(download_dir)
 
     with warnings.catch_warnings(record=True): # hide a useless warning fromm pd
         warnings.simplefilter("always")
-        data_frame  = pd.read_excel(report_xlsx, sheet_name=data_sheet, dtype=str,engine="openpyxl")
+        data_frame  = pd.read_csv(report_csv)
 
     data_frame.rename(columns=str.lower, inplace=True)
+
     data_frame = data_frame[required_columns]  # just these columns
     data_frame.columns = adjusted_names  # rename them
     data_frame.is_copy = False
