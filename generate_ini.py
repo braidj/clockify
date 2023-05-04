@@ -47,9 +47,9 @@ config['500_BY_7'] = {
 
 config['SIGNIFY'] = {
     'client': 'SIGNIFY',
-    'hours per day': '8',
-    'base rate': '666.66',
-    'higher rate':'666.66',
+    'hours per day': '7',
+    'base rate': '420',
+    'higher rate':'420',
     'higher users': "Alex Luketa,Simon Burgess,Jon Williams"
 }
 
