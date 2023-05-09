@@ -29,6 +29,15 @@ config['VERITHERM'] = {
     'higher users': "Alex Luketa"
 }
 
+config['SMART HTC'] = {
+    'client': 'VERITHERM',
+    'hours per day': '7',
+    'base rate': '437.50',
+    'higher rate':'500',
+    'higher users': "Alex Luketa,Jason Braid"
+}
+
+
 config['500_BY_8'] = {
     'client': 'GENERIC',
     'hours per day': '8',

@@ -92,7 +92,7 @@ def calc_rate(template, rate):
     Returns the rate to 2 dec places
     """
 
-    rate = float(cfg[template]["base rate"]) / float(cfg[template]["hours per day"])
+    rate = float(cfg[template][rate]) / float(cfg[template]["hours per day"])
     return round(rate,2)
 
 def get_higher_rate_user(template):
@@ -106,7 +106,7 @@ def main():
     """Main entry point"""
     #TODO handle if no recent csv file
     #TDOO Refactor so main just contains which client to run for
-    CLIENT = "SIGNIFY"
+    CLIENT = "SMART HTC"
     HOUR_BASE_RATE = calc_rate(CLIENT,"base rate")
     HOUR_DIRECTOR_RATE = calc_rate(CLIENT,"higher rate")
     HIGHER_RATE_USERS = get_higher_rate_user(CLIENT)
