@@ -10,7 +10,8 @@ config = configparser.ConfigParser()
 
 config['GLOBAL SETTINGS']={
     'data_sheet':'Detailed Report',
-    'debug':'on'
+    'print':'on',
+    'results': 'results.csv'
 }
 
 config['MTC'] = {
@@ -18,7 +19,8 @@ config['MTC'] = {
     'hours per day': '8',
     'base rate': '500',
     'higher rate':'620',
-    'higher users': "Jason Braid,Alex Luketa"
+    'higher users': "Jason Braid,Alex Luketa",
+    'custom column': 'milestone'
 }
 
 config['VERITHERM'] = {

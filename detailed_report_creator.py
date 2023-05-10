@@ -9,9 +9,9 @@ from datetime import datetime
 import sys
 import configparser
 import glob
-import pandas as pd
-import pyperclip
 import warnings
+import pyperclip
+import pandas as pd
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -20,7 +20,7 @@ pd.set_option('display.colheader_justify', 'center')
 pd.set_option('display.precision', 3)
 
 CLOCKIFY_COLUMNS = [
-    'Project', 'Client', 'Description', 'Task',
+    'Project', 'PROJECT', 'Description', 'Task',
     'User', 'Group', 'Email', 'Tags', 'Billable',
     'Start Date', 'Start Time', 'End Date', 'End Time',
     'Duration (h)', 'Duration (decimal)', 
@@ -64,16 +64,16 @@ def week_number(date_string):
     date = datetime.strptime(date_string, '%d/%m/%Y')
     return date.isocalendar()[1]
 
-def format_date(df,column):
+def format_date(data_frame,column):
     """Convert a string date column to a specific format"""
-    df[column] = pd.to_datetime(df.Date,format='%d/%m/%Y')
-    df[column] = df[column].dt.strftime('%d/%m/%Y')
-    return df
+    data_frame[column] = pd.to_datetime(data_frame.Date,format='%d/%m/%Y')
+    data_frame[column] = data_frame[column].dt.strftime('%d/%m/%Y')
+    return data_frame
 
-def remove_carriage_returns(df, column):
+def remove_carriage_returns(data_frame, column):
     """Removes carraige returns"""
-    df[column] = df[column].str.replace('\n', '.')
-    return df
+    data_frame[column] = data_frame[column].str.replace('\n', '.')
+    return data_frame
 
 def get_clockify_file_name(search_in):
     """Returns the name of the last file in search folder that starts with Clockify_"""
@@ -102,34 +102,27 @@ def get_higher_rate_user(template):
     result = cfg[template]['higher users']
     return result.split(',')
 
-def main():
-    """Main entry point"""
-    #TODO handle if no recent csv file
-    #TDOO Refactor so main just contains which client to run for
-    CLIENT = "SMART HTC"
-    HOUR_BASE_RATE = calc_rate(CLIENT,"base rate")
-    HOUR_DIRECTOR_RATE = calc_rate(CLIENT,"higher rate")
-    HIGHER_RATE_USERS = get_higher_rate_user(CLIENT)
+def generate_report(source_date,project):
+    """Returns the sorted report data and the file name"""
 
-    rate_card = RateCard(HIGHER_RATE_USERS,HOUR_DIRECTOR_RATE,HOUR_BASE_RATE)
+    base_day_rate = calc_rate(project,"base rate")
+    higher_hourly_rate = calc_rate(project,"higher rate")
+    higher_rate_users = get_higher_rate_user(project)
+    hours_per_day = cfg[project]['hours per day']
 
-    print(f"Base hourly rate = {HOUR_BASE_RATE}")
-    print(f"Higher hourly rate = {HOUR_DIRECTOR_RATE}")
-    print(f"Higher rate users = {HIGHER_RATE_USERS}")
-    print(f"Reporting template used = {CLIENT}")
+    rate_card = RateCard(higher_rate_users,higher_hourly_rate,base_day_rate)
 
-    user_dir = os.path.expanduser('~')
-    download_dir = os.path.join(user_dir, 'Downloads') # search in used specific downloads folder
-    data_sheet = cfg['GLOBAL SETTINGS']['data_sheet']
+    print(f"Reporting template used = {project}")
+    print(f"Hours per day {hours_per_day} at a base rate of {base_day_rate}")
+    print(f"Higher hourly rate = {higher_hourly_rate} for {higher_rate_users}")
 
     required_columns = list(cfg['CLOCKIFY COLUMNS'].keys())
     adjusted_names = list(cfg['CLOCKIFY COLUMNS'].values())
-
-    report_csv = get_clockify_file_name(download_dir)
+    results_file = cfg['GLOBAL SETTINGS']['results']
 
     with warnings.catch_warnings(record=True): # hide a useless warning fromm pd
         warnings.simplefilter("always")
-        data_frame  = pd.read_csv(report_csv)
+        data_frame  = pd.read_csv(source_date)
 
     data_frame.rename(columns=str.lower, inplace=True)
 
@@ -147,7 +140,10 @@ def main():
     data_frame["Week Number"] = data_frame["Date"].apply(week_number)
 
     data_frame["Invoice-Period"] = data_frame["Date"].apply(invoice_period)
-    data_frame["Milestone"] = "Not set"
+
+    if cfg.has_option(project, 'custom column'):
+        new_col_name = cfg.get(project, 'custom column')
+        data_frame[new_col_name] = "Not set"
 
     data_frame = remove_carriage_returns(data_frame,"Description")
     data_frame = remove_carriage_returns(data_frame,"Project")
@@ -156,19 +152,33 @@ def main():
     # inplace=False, kind='quicksort', na_position='last')
     sort = data_frame.sort_values(["Invoice-Period","Week Number","Date","User"],ascending=True)
 
-    sort.to_csv("results.csv", index=False)
+    sort.to_csv(results_file, index=False)
 
-    with open("results.csv", encoding="utf8") as results_file:
+    return sort,results_file
+
+def main():
+    """Main entry point"""
+    #TODO handle if no recent csv file
+    #TODO Refactor so main just contains which PROJECT to run for
+
+    project = "MTC"
+
+    user_dir = os.path.expanduser('~')
+    download_dir = os.path.join(user_dir, 'Downloads') # search in used specific downloads folder
+    source_data = get_clockify_file_name(download_dir)
+
+    data, result_file = generate_report(source_data,project)
+
+    with open(result_file, encoding="utf8") as results_file:
         text = results_file.read()
 
     pyperclip.copy(text)
 
-    if cfg['GLOBAL SETTINGS']['debug'] == 'on':
+    if cfg['GLOBAL SETTINGS']['print'] == 'on':
         print("\nThe following data is available to be pasted from the clipboard\n")
-        print(sort)
+        print(data)
 
     print("Report is now ready to be pasted")
-
 
 if __name__ == "__main__":
     main()
