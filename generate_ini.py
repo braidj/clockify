@@ -23,6 +23,15 @@ config['MTC'] = {
     'custom column': 'milestone'
 }
 
+config['MTC_PHASE2'] = {
+    'client': 'MTC',
+    'hours per day': '8',
+    'base rate': '500',
+    'higher rate':'650',
+    'higher users': "Jason Braid,Alex Luketa",
+    'custom column': 'milestone'
+}
+
 config['VERITHERM'] = {
     'client': 'VERITHERM',
     'hours per day': '7',
