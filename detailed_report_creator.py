@@ -161,7 +161,7 @@ def main():
     #TODO handle if no recent csv file
     #TODO Refactor so main just contains which PROJECT to run for
 
-    project = "MTC"
+    project = "VERITHERM"
 
     user_dir = os.path.expanduser('~')
     download_dir = os.path.join(user_dir, 'Downloads') # search in used specific downloads folder
