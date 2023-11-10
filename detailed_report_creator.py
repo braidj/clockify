@@ -171,19 +171,19 @@ def generate_report(source_date,project,rates):
     total_cost = sort['Cost'].sum()
     total_hours = sort['Hours'].sum()
 
-    totals_row = {
+    totals_row_df = pd.DataFrame([{
         'Project': 'Total',
         'Description': '',
         'User': '',
         'Date': '',
-        'Hours': round(total_hours,2),
+        'Hours': round(total_hours, 2),
         'Rate': '',
-        'Cost': round(total_cost,2),
+        'Cost': round(total_cost, 2),
         'Week Number': '',
-        'Invoice-Period': ''   
-    }
+        'Invoice-Period': ''
+    }])
 
-    sort = sort.append(totals_row, ignore_index=True)
+    sort = pd.concat([sort, totals_row_df], ignore_index=True)
 
     sort.to_csv(results_file, index=False)
 
@@ -192,7 +192,12 @@ def generate_report(source_date,project,rates):
 def main():
     """Main entry point"""
 
-    project = "ZHERO"
+    # If script called from command line use the argument passed as the project
+    if len(sys.argv) > 1:
+        project = sys.argv[1]
+    else:
+        project = "ZHERO" #default
+
     rates = HourlyRates(project,cfg)
 
     user_dir = os.path.expanduser('~')
