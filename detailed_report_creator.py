@@ -12,6 +12,8 @@ import glob
 import warnings
 import pyperclip
 import pandas as pd
+import costings
+import common_funcs as cf
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -20,38 +22,73 @@ pd.set_option('display.colheader_justify', 'center')
 pd.set_option('display.precision', 3)
 
 CLOCKIFY_COLUMNS = [
-    'Project', 'PROJECT', 'Description', 'Task',
-    'User', 'Group', 'Email', 'Tags', 'Billable',
+    'Project', 'PROJECT', 'Description', 'Task', 'User', 'Group', 'Email', 'Tags', 'Billable',
     'Start Date', 'Start Time', 'End Date', 'End Time',
     'Duration (h)', 'Duration (decimal)', 
-    'Billable Rate (GBP)', 'Billable Amount (GBP)']
+    'Billable Rate (GBP)', 'Billable Amount (GBP)'
+]
 
 #TODO Summarise by distinct Project
 #TODO Summarise by distinct Project and Week Nos
 #TODO Add Month-Year
 
 cfg = configparser.ConfigParser()
-
 cfg.read('clockify.ini')
 
-class RateCard:
+class HourlyRates:
     """
-    Store the higher rate users hourly rates
+    Return hourly rates of staff working on a project
     """
-    def __init__(self,higher_rate_users,higher_rate,base_rate) -> None:
-        self.directors = higher_rate_users
-        self.director_rate = higher_rate
-        self.base_rate = base_rate
+    def __init__(self,project,cfg):
 
-    def rate(self,user):
+        self.project = project
+        self.cfg = cfg # config parser object
+        self.rate_card_name = self.cfg[project]['rate card']
+        self.rates = self.__create_rate_card()
+        self.client = self.cfg[project]['client']
+        self.type = self.cfg[project]['type']
+        self.hpd = self.cfg[project]['hours per day']
+        self.missing_users = {}
+
+    def __create_rate_card(self):
         """
-        Returns the appropriate rate for that user
+        Populates a dictionary with the developer and their hourly rate
+        and makes it available
+        """
+        return costings.all_rates.get(self.rate_card_name,{})
+    
+    def confirm(self):
+        """
+        Confirm if all users looked up had a rate defined
         """
 
-        if user in self.directors:
-            return self.director_rate
+        if len(self.missing_users):
+            cf.colour_text(f"Missing rates for {list(self.missing_users.keys())}","RED")
 
-        return self.base_rate
+        else:
+            cf.colour_text("No missing user rates","GREEN")
+
+    def user_rate(self,user):
+        """
+        Returns the rate for that user
+        Main feature
+        """
+
+        if user not in self.rates:
+            if user not in self.missing_users:
+                self.missing_users[user] = 1
+            else:
+                self.missing_users[user] = self.missing_users[user] + 1
+
+        return self.rates.get(user,0)
+
+    def get_rates(self):
+        """
+        Return the entire rate card
+        Useful for reporting / debugging
+        """
+
+        return self.rates
 
 def invoice_period(date_string):
     """To help with invoicing display the date as mm-yyyy"""
@@ -87,35 +124,12 @@ def get_clockify_file_name(search_in):
         print("There is no recent Clockify report")
         sys.exit(0)
 
-def calc_rate(template, rate):
-    """
-    Returns the rate to 2 dec places
-    """
-
-    rate = float(cfg[template][rate]) / float(cfg[template]["hours per day"])
-    return round(rate,2)
-
-def get_higher_rate_user(template):
-    """
-    Returns a list of user who are charged at the higher rate
-    """
-    result = cfg[template]['higher users']
-    return result.split(',')
-
-def generate_report(source_date,project):
+def generate_report(source_date,project,rates):
     """Returns the sorted report data and the file name"""
 
-    base_day_rate = calc_rate(project,"base rate")
-    higher_hourly_rate = calc_rate(project,"higher rate")
-    higher_rate_users = get_higher_rate_user(project)
-    hours_per_day = cfg[project]['hours per day']
-
-    rate_card = RateCard(higher_rate_users,higher_hourly_rate,base_day_rate)
-
-    print(f"Reporting template used = {project}")
-    print(f"Hours per day {hours_per_day} at a base rate of {base_day_rate}")
-    print(f"Higher hourly rate = {higher_hourly_rate} for {higher_rate_users}")
-
+    cf.colour_text(f"Reporting template used = {rates.project}","GREEN")
+    cf.colour_text(f"Hours per day {rates.hpd} for a {rates.type} project using {rates.rate_card_name} rate card","GREEN")
+ 
     required_columns = list(cfg['CLOCKIFY COLUMNS'].keys())
     adjusted_names = list(cfg['CLOCKIFY COLUMNS'].values())
     results_file = cfg['GLOBAL SETTINGS']['results']
@@ -131,8 +145,8 @@ def generate_report(source_date,project):
     data_frame.is_copy = False
     data_frame["Hours"] = data_frame["Hours"].astype(float)
 
-    data_frame["Rate"] = data_frame.apply(lambda row: rate_card.rate(row.User), axis=1)
-
+    # data_frame["Rate"] = data_frame.apply(lambda row: rate_card.rate(row.User), axis=1)
+    data_frame["Rate"] = data_frame.apply(lambda row: rates.user_rate(row.User), axis=1)
     data_frame["Rate"] = data_frame["Rate"].astype(float)
     data_frame=format_date(data_frame,"Date")
 
@@ -158,16 +172,18 @@ def generate_report(source_date,project):
 
 def main():
     """Main entry point"""
+
     #TODO handle if no recent csv file
     #TODO Refactor so main just contains which PROJECT to run for
 
-    project = "VERITHERM"
+    project = "ZHERO"
+    rates = HourlyRates(project,cfg)
 
     user_dir = os.path.expanduser('~')
     download_dir = os.path.join(user_dir, 'Downloads') # search in used specific downloads folder
     source_data = get_clockify_file_name(download_dir)
 
-    data, result_file = generate_report(source_data,project)
+    data, result_file = generate_report(source_data,project,rates)
 
     with open(result_file, encoding="utf8") as results_file:
         text = results_file.read()
@@ -178,7 +194,8 @@ def main():
         print("\nThe following data is available to be pasted from the clipboard\n")
         print(data)
 
-    print("Report is now ready to be pasted")
+    rates.confirm()
+    cf.colour_text("Report is now ready to be pasted","GREEN")
 
 if __name__ == "__main__":
     main()
