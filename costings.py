@@ -7,7 +7,7 @@ all_rates = {
         {
             "Jason Braid": 71.43,
             "Simon Burgess": 51.11,
-            "Alexi Luketa": 51.11,
+            "Alex Luketa": 51.11,
             "Jon Williams": 51.11,
             "Connor Holloway": 30.00
         },

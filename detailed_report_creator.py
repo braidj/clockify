@@ -12,6 +12,8 @@ import glob
 import warnings
 import pyperclip
 import pandas as pd
+from tabulate import tabulate
+
 import costings
 import common_funcs as cf
 
@@ -164,7 +166,24 @@ def generate_report(source_date,project,rates):
 
     # sort = data_frame.sort_values("Week Number", axis=0, ascending=False,
     # inplace=False, kind='quicksort', na_position='last')
-    sort = data_frame.sort_values(["Invoice-Period","Week Number","Date","User"],ascending=True)
+    sort = data_frame.sort_values(["Project","Invoice-Period","Week Number","Date","User"],ascending=True)
+
+    total_cost = sort['Cost'].sum()
+    total_hours = sort['Hours'].sum()
+
+    totals_row = {
+        'Project': 'Total',
+        'Description': '',
+        'User': '',
+        'Date': '',
+        'Hours': round(total_hours,2),
+        'Rate': '',
+        'Cost': round(total_cost,2),
+        'Week Number': '',
+        'Invoice-Period': ''   
+    }
+
+    sort = sort.append(totals_row, ignore_index=True)
 
     sort.to_csv(results_file, index=False)
 
@@ -172,9 +191,6 @@ def generate_report(source_date,project,rates):
 
 def main():
     """Main entry point"""
-
-    #TODO handle if no recent csv file
-    #TODO Refactor so main just contains which PROJECT to run for
 
     project = "ZHERO"
     rates = HourlyRates(project,cfg)
@@ -191,8 +207,9 @@ def main():
     pyperclip.copy(text)
 
     if cfg['GLOBAL SETTINGS']['print'] == 'on':
-        print("\nThe following data is available to be pasted from the clipboard\n")
-        print(data)
+        cf.colour_text("\nThe following data is available to be pasted from the clipboard\n","GREEN")
+
+        print(tabulate(data, headers=["Project", "Description", "User", "Date","Hours","Rate","Cost","WeekNos","Invoice"], tablefmt="grid"))
 
     rates.confirm()
     cf.colour_text("Report is now ready to be pasted","GREEN")
