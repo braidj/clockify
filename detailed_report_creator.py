@@ -37,6 +37,10 @@ CLOCKIFY_COLUMNS = [
 cfg = configparser.ConfigParser()
 cfg.read('clockify.ini')
 
+sections = cfg.sections()
+non_project_sections = ['GLOBAL SETTINGS','CLOCKIFY COLUMNS']
+projects = [x for x in sections if x not in non_project_sections]
+
 class HourlyRates:
     """
     Return hourly rates of staff working on a project
@@ -117,13 +121,13 @@ def remove_carriage_returns(data_frame, column):
 def get_clockify_file_name(search_in):
     """Returns the name of the last file in search folder that starts with Clockify_"""
 
-    file_type = r'/Clockify_*.csv'
+    file_type = r'/Clockify*.csv'
     files = glob.glob(search_in +  file_type)
     try:
         max_file = max(files, key=os.path.getctime)
         return max_file
     except ValueError:
-        print("There is no recent Clockify report")
+        print("There is no recent Clockify report, expecting {file_type}")
         sys.exit(0)
 
 def generate_report(source_date,project,rates):
@@ -192,12 +196,13 @@ def generate_report(source_date,project,rates):
 def main():
     """Main entry point"""
 
-    # If script called from command line use the argument passed as the project
-    if len(sys.argv) > 1:
-        project = sys.argv[1]
-    else:
-        project = "ZHERO" #default
+    user_input = input(f"Which project do you want to calculate the cost for ?: {projects}\n")
 
+    if user_input not in projects:
+        cf.colour_text(f"Project {user_input} not found","RED")
+        sys.exit(0)
+    else:
+        project = user_input
     rates = HourlyRates(project,cfg)
 
     user_dir = os.path.expanduser('~')
