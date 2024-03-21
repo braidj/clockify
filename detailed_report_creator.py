@@ -40,6 +40,7 @@ cfg.read('clockify.ini')
 sections = cfg.sections()
 non_project_sections = ['GLOBAL SETTINGS','CLOCKIFY COLUMNS']
 projects = [x for x in sections if x not in non_project_sections]
+file_prefix = cfg['GLOBAL SETTINGS']['prefix']
 
 class HourlyRates:
     """
@@ -121,13 +122,14 @@ def remove_carriage_returns(data_frame, column):
 def get_clockify_file_name(search_in):
     """Returns the name of the last file in search folder that starts with Clockify_"""
 
-    file_type = r'/Clockify*.csv'
+    # file_type = r'/Clockify*.csv'
+    file_type = f'/{file_prefix}*.csv'
     files = glob.glob(search_in +  file_type)
     try:
         max_file = max(files, key=os.path.getctime)
         return max_file
     except ValueError:
-        print("There is no recent Clockify report, expecting {file_type}")
+        print(f"There is no recent Clockify report, expecting {file_type} in {search_in}")
         sys.exit(0)
 
 def generate_report(source_date,project,rates):
